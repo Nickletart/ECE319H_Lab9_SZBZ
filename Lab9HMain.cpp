@@ -203,7 +203,7 @@ int main4(void){ uint32_t last=0,now;
 }
 
 // ALL ST7735 OUTPUT MUST OCCUR IN MAIN
-int main(void){ // final main 
+int main(void){ // final main
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
@@ -211,23 +211,75 @@ int main(void){ // final main
   ST7735_FillScreen(ST7735_BLACK);
   Sensor.Init(); // PB18 = ADC1 channel 5, slidepot
   Switch_Init(); // initialize switches
+  JoyStick_Init(); // initalize joystick
   LED_Init();    // initialize LED
   Sound_Init();  // initialize sound
-  JoyStick_Init();
-  //  TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26
+  //TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26
     // initialize interrupts on TimerG12 at 30 Hz
-  TimerG12_IntArm(2666667, 1);
+  
   // initialize all data structures
   __enable_irq();
+      for (int i = 0; i < 18; i++){
+        for (int j = 0; j < 16; j++){
+            if (mushroommatrix[i][j].alive) ST7735_DrawBitmap(mushroommatrix[i][j].x, greenmushroom1, 8, 8);
+        }
+    }
 
-  while(1){
-    while(!flag){}
-    flag = 0;
+  //global Language variables
+  bool isEng;
+  //select Language Variables
+  char* PickEng;
+  char* PickSpn;
+  strcpy(PickEng, "[A] English");
+  strcpy(PickSpn, "[B] Espanol");
 
-    playgame();
+  //English Menu Strings
+  char* Eng1;
+  char* Eng2;
+  strcpy(Eng1, "Press Any Button");
+  strcpy(Eng2, "To Play!");
 
-    //draw the menu screen
-    //after we select language we set ismenu flag to true
-    //ismenu flag is set to false inside the menu loop right before we play the game
+  //Spanish Manu Strings
+  char* Spn1;
+  char* Spn2;
+  strcpy(Spn1, "pulsa el botón");
+  strcpy(Spn2, "¡A jugar!");
+
+  while(1){ //only cares if playing or menu
+    //Select Language, English or Spanish
+    ST7735_DrawString(4, 3, PickEng, ST7735_WHITE);
+    ST7735_DrawString(6, 3, PickEng, ST7735_WHITE);
+    int x = Switch_In();
+    if (x == 2) isEng = true;
+    else isEng = false;
+
+    //menu screen
+    if (isEng){
+      ST7735_DrawString(5, 2, Eng1, ST7735_WHITE);
+      ST7735_DrawString(6,4, Eng2, ST7735_WHITE);
+
+      int x = Switch_In();
+      while (!x) x = Switch_In(); //polls until any button is pressed
+      playgame(); 
+    }
+    else{
+      ST7735_DrawString(5, 2, Spn1, ST7735_WHITE);
+      ST7735_DrawString(6,4, Spn2, ST7735_WHITE);
+
+      int x = Switch_In();
+      while (!x) x = Switch_In(); //polls until any button is pressed
+      playgame(); 
+    }
+    //next needs pause and end game menu screens
+
+    // wait for semaphore
+       // clear semaphore
+       // update ST7735R
+    // check for end game or level switch
   }
 }
+
+
+
+
+
