@@ -120,8 +120,6 @@ void mushroom_gen(){
 extern int velx, vely;
 extern int flag;
 
-extern int posx;
-extern int posy;
 extern int prevx;
 extern int prevy;
 
@@ -140,7 +138,8 @@ void playgame(){
         }
     }
     //spawn player
-    ST7735_DrawBitmap(posx, posy, greengun, 7, 8);
+    blaster player(60, 151);
+    ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
 
     while(1){
         while(!flag){}
@@ -148,20 +147,20 @@ void playgame(){
 
         //game logic before pause logic so we dont render before quitting
         //gun logic
-        posx += velx;
-        posy += vely;
+        player.x += velx;
+        player.y += vely;
 
-        if(posx < 0) posx = 0;
-        if(posx > 120) posx = 120;
-        if(posy < 136) posy = 136;
-        if(posy > 159) posy = 159;
+        if(player.x < 0) player.x = 0;
+        if(player.x > 120) player.x = 120;
+        if(player.y < 136) player.y = 136;
+        if(player.y > 159) player.y = 159;
 
-        if(posx != prevx || posy != prevy){
+        if(player.x != prevx || player.y != prevy){
             ST7735_FillRect(prevx, prevy - 7, 7, 8, ST7735_BLACK);
-            ST7735_DrawBitmap(posx, posy, greengun, 7, 8);
+            ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
 
-            prevx = posx;
-            prevy = posy;
+            prevx = player.x;
+            prevy = player.y;
         }
 
         //pause menu
