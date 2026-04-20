@@ -4,28 +4,105 @@
 
 //segments
 segment::segment() : x(0), y(0), pose(0), index(0){
-    poses[0] = greenbody1;
-    poses[1] = greenbody2;
-    poses[2] = greenbody3;
-    poses[3] = greenbody4;
-    poses[4] = greenbody5;
-    poses[5] = greenbody6;
-    poses[6] = greenbody7;
-    poses[7] = greenbody8;
+    poses[0] = greenhead1;
+    poses[1] = greenhead2;
+    poses[2] = greenhead3;
+    poses[3] = greenhead4;
+    poses[4] = greenhead5;
+    poses[5] = greenhead6;
+    poses[6] = greenhead7;
+    poses[7] = greenhead8;
+    poses[8] = greenheaddown1;
+    poses[9] = greenheaddown2;
+    poses[10] = greenheaddown3;
+    poses[11] = greenheaddown4;
+    poses[12] = greenheaddown5;
+    poses[13] = greenheaddown6;
+    poses[14] = greenheaddown7;
+    poses[15] = greenheaddown8;
+    poses[16] = greenheadright1;
+    poses[17] = greenheadright2;
+    poses[18] = greenheadright3;
+    poses[19] = greenheadright4;
+    poses[20] = greenheadright5;
+    poses[21] = greenheadright6;
+    poses[22] = greenheadright7;
+    poses[23] = greenheadright8;
 }
 
 segment::segment(int x, int y, int i) : x(x), y(y), pose(0), index(i){
-    poses[0] = greenbody1;
-    poses[1] = greenbody2;
-    poses[2] = greenbody3;
-    poses[3] = greenbody4;
-    poses[4] = greenbody5;
-    poses[5] = greenbody6;
-    poses[6] = greenbody7;
-    poses[7] = greenbody8;
+    if(!index){
+        poses[0] = greenhead1;
+        poses[1] = greenhead2;
+        poses[2] = greenhead3;
+        poses[3] = greenhead4;
+        poses[4] = greenhead5;
+        poses[5] = greenhead6;
+        poses[6] = greenhead7;
+        poses[7] = greenhead8;
+        poses[8] = greenheaddown1;
+        poses[9] = greenheaddown2;
+        poses[10] = greenheaddown3;
+        poses[11] = greenheaddown4;
+        poses[12] = greenheaddown5;
+        poses[13] = greenheaddown6;
+        poses[14] = greenheaddown7;
+        poses[15] = greenheaddown8;
+        poses[16] = greenheadright1;
+        poses[17] = greenheadright2;
+        poses[18] = greenheadright3;
+        poses[19] = greenheadright4;
+        poses[20] = greenheadright5;
+        poses[21] = greenheadright6;
+        poses[22] = greenheadright7;
+        poses[23] = greenheadright8;
+    }else{
+        poses[0] = greenbody1;
+        poses[1] = greenbody2;
+        poses[2] = greenbody3;
+        poses[3] = greenbody4;
+        poses[4] = greenbody5;
+        poses[5] = greenbody6;
+        poses[6] = greenbody7;
+        poses[7] = greenbody8;
+        poses[8] = greenbodydown1;
+        poses[9] = greenbodydown2;
+        poses[10] = greenbodydown3;
+        poses[11] = greenbodydown4;
+        poses[12] = greenbodydown5;
+        poses[13] = greenbodydown6;
+        poses[14] = greenbodydown7;
+        poses[15] = greenbodydown8;
+        poses[16] = greenbodyright1;
+        poses[17] = greenbodyright2;
+        poses[18] = greenbodyright3;
+        poses[19] = greenbodyright4;
+        poses[20] = greenbodyright5;
+        poses[21] = greenbodyright6;
+        poses[22] = greenbodyright7;
+        poses[23] = greenbodyright8;
+    }
 }
 
 //centipede
+centipede::centipede() : len(12), dir(-1){
+    for(int i = 0; i < len; i++){
+        body[i].x = 56 - (i * 8);
+        body[i].y = 7;
+
+        body[i].poses[0] = greenbody1;
+        body[i].poses[1] = greenbody2;
+        body[i].poses[2] = greenbody3;
+        body[i].poses[3] = greenbody4;
+        body[i].poses[4] = greenbody5;
+        body[i].poses[5] = greenbody6;
+        body[i].poses[6] = greenbody7;
+        body[i].poses[7] = greenbody8;
+
+        body[i].pose
+    }
+}
+
 centipede::centipede(segment seg, int len, int dir) : len(len), dir(dir){
     for(int i = 0; i < len; i++){
         body[i] = segment(seg.x + i * 14 * dir, seg.y, i);
@@ -139,6 +216,9 @@ void mushroom_gen(){
         }
     }
 }
+
+//centipede stuff
+centipede centipedes[12];
 
 //game stuff
 
@@ -283,6 +363,7 @@ void gameinit(){
     //spawn player
     player.x = 56;
     player.y = 160;
+    player.lives = 3;
     ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
 }
 
