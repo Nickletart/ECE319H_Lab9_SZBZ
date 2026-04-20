@@ -46,14 +46,21 @@ void PLL_Init(void){ // set phase lock loop (PLL)
 
 SlidePot Sensor(1804, 104); // copy calibration from Lab 7
 
+int state = 3; // 0 is menu, 1 is game, 2 is pause, 3 is language select
+bool newgame = false;
+
+//player object
+blaster player;
+
 int velx, vely;
+int sw;
+int prevsw = 0;
 int flag = 0;
 
-int prevx = 60;
-int prevy = 151;
+int prevx = 56;
+int prevy = 160;
 
-bool ispaused = false;
-bool ismenu = true;
+bool isEng;
 
 // games engine runs at 30Hz
 void TIMG12_IRQHandler(void){
@@ -61,6 +68,7 @@ void TIMG12_IRQHandler(void){
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
 
+    sw = Switch_In();
     JoyStick_In(&velx, &vely);
     flag = 1;
 
@@ -212,74 +220,28 @@ int main(void){ // final main
   Sensor.Init(); // PB18 = ADC1 channel 5, slidepot
   Switch_Init(); // initialize switches
   JoyStick_Init(); // initalize joystick
-  LED_Init();    // initialize LED
-  Sound_Init();  // initialize sound
+  //LED_Init();    // initialize LED
+  //Sound_Init();  // initialize sound
   //TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26
     // initialize interrupts on TimerG12 at 30 Hz
-  
+  TimerG12_IntArm(2666667, 1);
   // initialize all data structures
   __enable_irq();
-      for (int i = 0; i < 18; i++){
-        for (int j = 0; j < 16; j++){
-            if (mushroommatrix[i][j].alive) ST7735_DrawBitmap(mushroommatrix[i][j].x, greenmushroom1, 8, 8);
-        }
+
+  while(1){
+    if(state == 0){
+      state = menu();
+      if(state == 1 && !newgame){
+        gameinit();
+        newgame = true;
+      }
+    }else if(state == 1){
+      state = playgame();
+    }else if(state == 2){
+      state = pause();
+    }else if(state == 3){
+      language();
+      state = 0;
     }
-
-  //global Language variables
-  bool isEng;
-  //select Language Variables
-  char* PickEng;
-  char* PickSpn;
-  strcpy(PickEng, "[A] English");
-  strcpy(PickSpn, "[B] Espanol");
-
-  //English Menu Strings
-  char* Eng1;
-  char* Eng2;
-  strcpy(Eng1, "Press Any Button");
-  strcpy(Eng2, "To Play!");
-
-  //Spanish Manu Strings
-  char* Spn1;
-  char* Spn2;
-  strcpy(Spn1, "pulsa el botón");
-  strcpy(Spn2, "¡A jugar!");
-
-  while(1){ //only cares if playing or menu
-    //Select Language, English or Spanish
-    ST7735_DrawString(4, 3, PickEng, ST7735_WHITE);
-    ST7735_DrawString(6, 3, PickEng, ST7735_WHITE);
-    int x = Switch_In();
-    if (x == 2) isEng = true;
-    else isEng = false;
-
-    //menu screen
-    if (isEng){
-      ST7735_DrawString(5, 2, Eng1, ST7735_WHITE);
-      ST7735_DrawString(6,4, Eng2, ST7735_WHITE);
-
-      int x = Switch_In();
-      while (!x) x = Switch_In(); //polls until any button is pressed
-      playgame(); 
-    }
-    else{
-      ST7735_DrawString(5, 2, Spn1, ST7735_WHITE);
-      ST7735_DrawString(6,4, Spn2, ST7735_WHITE);
-
-      int x = Switch_In();
-      while (!x) x = Switch_In(); //polls until any button is pressed
-      playgame(); 
-    }
-    //next needs pause and end game menu screens
-
-    // wait for semaphore
-       // clear semaphore
-       // update ST7735R
-    // check for end game or level switch
   }
 }
-
-
-
-
-

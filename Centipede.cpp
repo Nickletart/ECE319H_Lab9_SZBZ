@@ -66,7 +66,7 @@ mushroom::mushroom(int x, int y) : x(x), y(y), pose(0), alive(0){
 }
 
 //blaster
-blaster::blaster(int x, int y) : x(x), y(y), lives(3){}
+blaster::blaster() : x(0), y(0), lives(3){}
 
 //bullet
 bullet::bullet(int x, int y) : x(x), y(y){}
@@ -92,8 +92,8 @@ flea::flea(int x, int y) : x(x), y(y), pose(0){
 }
 
 //random helpers
-int seed = 1;
-int random32(){
+uint32_t seed = 1;
+uint32_t random32(){
     seed = 1664525 * seed + 1013904223;
     return seed;
 }
@@ -103,86 +103,262 @@ int random(int n){
 }
 
 //mushroom matrix
-mushroom mushrooms[18][16];
+mushroom mushrooms[20][16];
 
 void mushroom_gen(){
-    for(int i = 0; i < 18; i++){
+    for(int i = 0; i < 20; i++){
+        for(int j = 0; j < 16; j++){
+            mushrooms[i][j].alive = 0;
+        }
+    }
+    
+    for(int i = 0; i < 20; i++){
         for(int j = 0; j < 16; j++){
             mushrooms[i][j].x = j * 8;
-            mushrooms[i][j].y = (i + 1) * 8;
+            mushrooms[i][j].y = ((i + 1) * 8) - 1;
 
-            int k = random(100);
-            if(k > 43 && k < 55) mushrooms[i][j].alive = 1;
-        }    
+            int k = random(256);
+            int mushroomchance;
+
+            if(i < 5){
+                mushroomchance = 10;
+            }else if(i < 15){
+                mushroomchance = 25;
+            }else{
+                mushroomchance = 10;
+            }
+
+            if(k < mushroomchance && i > 1 && i < 18){
+                int neighbortolerance = random(3);
+                if(i > 0 && mushrooms[i - 1][j].alive && neighbortolerance) continue;
+
+                neighbortolerance = random(3);
+                if(j > 0 && mushrooms[i][j - 1].alive && neighbortolerance) continue;
+                mushrooms[i][j].alive = 1;
+            }
+        }
     }
 }
 
+//game stuff
+
+extern bool newgame;
+extern blaster player;
+
 extern int velx, vely;
+extern int sw;
+extern int prevsw;
+extern int swlast;
 extern int flag;
 
 extern int prevx;
 extern int prevy;
 
-extern bool ispaused;
-extern bool ismenu;
+extern bool isEng;
 
-//game engine
-void playgame(){
-    //spawn mushrooms
-    mushroom_gen();
-    for(int i = 0; i < 18; i++){
-        for(int j = 0; j < 16; j++){
-        if(mushrooms[i][j].alive){
-            ST7735_DrawBitmap(mushrooms[i][j].x, mushrooms[i][j].y, greenmushroom1, 8, 8);
-        }
-        }
+void language(){
+    ST7735_FillScreen(ST7735_BLACK);
+    ST7735_DrawBitmap(21, 30, centipede_logo, 84, 10);
+    //select Language Variables
+  char* PickEng = "[A] English";
+  char* PickSpn = "[B] Espanol";
+
+  //Select Language, English or Spanish
+  ST7735_DrawString(4, 6, PickEng, ST7735_WHITE);
+  ST7735_DrawString(4, 8, PickSpn, ST7735_WHITE);
+
+  while(1){
+    while(!flag){}
+    flag = 0;
+    
+    if(sw != 0 && prevsw == 0){
+      if(sw == 2){ 
+        isEng = true;
+      }else if(sw == 1){
+        isEng = false;
+      }
+      while(sw){
+        while(!flag){}
+        flag = 0;
+      }
+      break;
     }
-    //spawn player
-    blaster player(60, 151);
-    ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
+    prevsw = sw;
+  }
+}
+
+//English Menu Strings
+char* Eng1 = "[A] Play";
+char* Eng2 = "[B] Language";
+
+//Spanish Menu Strings
+char* Spn1 = "[A] Jugar";
+char* Spn2 = "[B] Idioma";
+
+int menu(){
+    int nextstate;
+    ST7735_FillScreen(ST7735_BLACK);
+    ST7735_DrawBitmap(21, 30, centipede_logo, 84, 10);
+    seed = 0;
+
+    if(isEng){
+      ST7735_DrawString(4, 6, Eng1, ST7735_WHITE);
+      ST7735_DrawString(4, 8, Eng2, ST7735_WHITE);
+    }else{
+      ST7735_DrawString(4, 6, Spn1, ST7735_WHITE);
+      ST7735_DrawString(4, 8, Spn2, ST7735_WHITE);
+    }
 
     while(1){
         while(!flag){}
         flag = 0;
+        seed++;
 
-        //game logic before pause logic so we dont render before quitting
-        //gun logic
-        player.x += velx;
-        player.y += vely;
+        if(sw != 0 && prevsw == 0){
+            if(sw == 2){
+                nextstate = 1;
+            }else if(sw == 1){
+                nextstate = 3;
+            }
 
-        if(player.x < 0) player.x = 0;
-        if(player.x > 120) player.x = 120;
-        if(player.y < 136) player.y = 136;
-        if(player.y > 159) player.y = 159;
-
-        if(player.x != prevx || player.y != prevy){
-            ST7735_FillRect(prevx, prevy - 7, 7, 8, ST7735_BLACK);
-            ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
-
-            prevx = player.x;
-            prevy = player.y;
-        }
-
-        //pause menu
-        /*if(sw == 1){
-            
-            while(ispaused){
+            while(sw){
                 while(!flag){}
                 flag = 0;
+            }
+            break;
+        }
+        prevsw = sw;
+    }
+    return nextstate;
+}
 
-                if(sw == 2){
-                    ispaused = false;
-                    break;
+//pause strings
+char* EngResume = "[A] Resume";
+char* EngQuit = "[B] Quit";
+char* SpnResume = "[A] Continuar";
+char* SpnQuit = "[B] Salir";
+
+int pause(){
+    int nextstate;
+
+    if(isEng){
+        ST7735_DrawString(4, 6, EngResume, ST7735_WHITE);
+        ST7735_DrawString(4, 8, EngQuit, ST7735_WHITE);
+    }else{
+        ST7735_DrawString(4, 6, SpnResume, ST7735_WHITE);
+        ST7735_DrawString(4, 8, SpnQuit, ST7735_WHITE);
+    }
+
+    while(1){
+        while(!flag){}
+        flag = 0;
+        
+        if(sw != 0 && prevsw == 0){
+            if(sw == 1){
+                newgame = false;
+                nextstate = 0;
+            }else if(sw == 2){
+                ST7735_FillScreen(ST7735_BLACK);
+                prevx = -1;
+                prevy = -1;
+                nextstate = 1;
+            }
+
+            while(sw){
+                while(!flag){}
+                flag = 0;
+            }
+            break;
+        }
+        prevsw = sw;
+    }
+    return nextstate;
+}
+
+void gameinit(){
+    //clear screen
+    ST7735_FillScreen(ST7735_BLACK);
+    //spawn mushrooms
+    mushroom_gen();
+    //spawn player
+    player.x = 56;
+    player.y = 160;
+    ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
+}
+
+int playgame(){
+    while(1){
+        while(!flag){}
+        flag = 0;
+
+        //inputs
+        if(sw != 0 && prevsw == 0){
+            if(sw == 1){
+                while(sw){
+                    while(!flag){}
+                    flag = 0;
                 }
-                
-                if(sw == 1){
-                    ispaused = false;
-                    ismenu = true;
+                break;
+            }
+        }
+
+        //player logic
+        int tempx = player.x + velx;
+        int tempy = player.y + vely;
+
+        if(tempx < 0) tempx = 0;
+        if(tempx > 121) tempx = 121;
+        if(tempy < 135) tempy = 135;
+        if(tempy > 159) tempy = 159;
+
+        if(velx < 0){
+            int leftedge = tempx / 8;
+            int topedge = (player.y - 7) / 8;
+            int botedge = player.y / 8;
+
+            if(!mushrooms[topedge][leftedge].alive && !mushrooms[botedge][leftedge].alive) player.x = tempx;
+        }
+        
+        if(velx > 0){
+            int rightedge = (tempx + 6) / 8;
+            int topedge = (player.y - 7) / 8;
+            int botedge = player.y / 8;
+
+            if(!mushrooms[topedge][rightedge].alive && !mushrooms[botedge][rightedge].alive) player.x = tempx;
+        }
+
+        if(vely < 0){
+            int topedge = (tempy - 7) / 8;
+            int leftedge = player.x / 8;
+            int rightedge = (player.x + 6) / 8;
+
+            if(!mushrooms[topedge][leftedge].alive && !mushrooms[topedge][rightedge].alive) player.y = tempy;
+        }
+        
+        if(vely > 0){
+            int botedge = tempy / 8;
+            int leftedge = player.x / 8;
+            int rightedge = (player.x + 6) / 8;
+
+            if(!mushrooms[botedge][leftedge].alive && !mushrooms[botedge][rightedge].alive) player.y = tempy;
+        }
+
+        //draw mushrooms
+        for(int i = 0; i < 20; i++){
+            for(int j = 0; j < 16; j++){
+                if(mushrooms[i][j].alive){
+                    ST7735_DrawBitmap(mushrooms[i][j].x, mushrooms[i][j].y, greenmushroom1, 8, 8);
                 }
             }
         }
 
-        if(ismenu) break;
-        */
+        //draw player
+        if(player.x != prevx || player.y != prevy){
+            ST7735_FillRect(prevx, prevy - 7, 7, 8, ST7735_BLACK);
+            ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
+            prevx = player.x;
+            prevy = player.y;
+        }
     }
+    return 2;
 }

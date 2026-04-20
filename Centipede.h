@@ -44,7 +44,7 @@ class blaster{
     int y;
     int lives;
 
-    blaster(int, int);
+    blaster();
 };
 
 class bullet{
@@ -75,10 +75,14 @@ class flea{
     flea(int, int);
 };
 
-extern mushroom mushrooms[18][16];
-
+extern mushroom mushrooms[20][16];
 void mushroom_gen();
 
-void playgame();
+void language();
+int menu();
+int pause(); //return 0 if [B], 1 if [A]
+
+void gameinit();
+int playgame(); //return 2 if [B]
 
 #endif
