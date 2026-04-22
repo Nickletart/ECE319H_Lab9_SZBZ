@@ -1,6 +1,8 @@
 #ifndef CENTIPEDE_H_
 #define CENTIPEDE_H_
 
+#include <stdint.h>
+
 class segment{
     public:
     int x;
@@ -14,15 +16,25 @@ class segment{
     segment(int, int, int, int);
 };
 
+struct crumb{
+    short x;
+    short y;
+    signed char dir;
+};
+
 class centipede{
     public:
     segment body[12];
     int len;
     int index;
+    crumb breadcrumbs[96];
+    int turning;
+    int counter;
+    int prevdir;
 
     centipede();
     centipede(centipede&, int);
-    void split(int); //takes in segment index
+    void split(int, int);
 };
 
 class mushroom{
@@ -41,7 +53,7 @@ class blaster{
     public:
     int x;
     int y;
-    int lives;
+    uint32_t lives;
 
     blaster();
 };
@@ -50,6 +62,9 @@ class bullet{
     public:
     int x;
     int y;
+    int alive;
+    int prevx;
+    int prevy;
 
     bullet(int, int);
 };

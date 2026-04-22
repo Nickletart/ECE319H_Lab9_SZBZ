@@ -1,11 +1,19 @@
 #include "Centipede.h"
 #include "images/images.h"
 #include "../inc/ST7735.h"
+#include "Sound.h"
+#include "LED.h"
 
-//game stuff
+//game stuff    
 extern bool newgame;
 extern int flag;
 extern bool isEng;
+uint32_t score = 0;
+bool drawhud = false;
+
+//bullet stuffs
+bullet bullets[4] = {bullet(0, 0), bullet(0, 0), bullet(0, 0), bullet(0, 0)};
+int cooldown = 0;
 
 //input stuff
 extern int sw;
@@ -19,7 +27,17 @@ extern int prevy;
 
 //centipede stuff
 centipede centipedes[12];
-int centipedesidx = 0;
+int numcentipedes = 0;
+int centipedesoundtimer = 0;
+
+segment prevcentipedes[12][12];
+int prevcentipedelen[12];
+
+//hud assets
+char scoretxt[] = "Score: ";
+char livestxt[] = "Lives: ";
+char esscoretxt[] = "Puntos: ";
+char eslivestxt[] = "Vidas: ";
 
 //text assets
 char PickEng[] = "[A] English";
@@ -67,10 +85,10 @@ segment::segment(int x, int y, int i, int dir) : x(x), y(y), index(i), dir(dir){
 }
 
 //centipede
-centipede::centipede() : len(12), index(0){
+centipede::centipede() : len(12), index(0), turning(0), counter(0), prevdir(0){
     for(int i = 0; i < len; i++){
         body[i].x = 56 - (i * 8);
-        body[i].y = 7;
+        body[i].y = 15;
 
         if(!i){
             body[i].poses[0] = greenhead;
@@ -84,18 +102,90 @@ centipede::centipede() : len(12), index(0){
             body[i].pose = 2;
         }
 
-        body[i].index = 0;
+        body[i].index = i;
         body[i].dir = -1;
+    }
+
+    for(int i = 0; i < 96; i++){
+        breadcrumbs[i].x = body[0].x;
+        breadcrumbs[i].y = body[0].y;
+        breadcrumbs[i].dir = body[0].dir;
     }
 }
 
 centipede::centipede(centipede& c, int idx){
-    index = centipedesidx;
+    turning = 1;
+    counter = 0;
+    prevdir = c.body[idx + 1].dir;
+    index = numcentipedes;
+
     int temp = c.len;
-    c.len -= idx + 1;
-    len = temp - c.len - 1;
+    len = temp - idx - 1;
+    c.len = idx;
+    
     for(int i = 0; i < len; i++){
-        body[i] = c.body[i];
+        body[i] = c.body[idx + i + 1];
+        if(!i){
+            body[i].poses[0] = greenhead;
+            body[i].poses[1] = greenheaddown;
+            body[i].poses[2] = greenheadright;
+        }
+        body[i].index = i;
+    }
+    
+    if(len){
+        body[0].dir = 0;
+        body[0].pose = 1;
+
+        for(int i = 0; i < 96; i++){
+            int temp = i / 8;
+            if(temp >= len) temp = len - 1;
+            breadcrumbs[i].x = body[temp].x;
+            breadcrumbs[i].y = body[temp].y;
+            breadcrumbs[i].dir = body[temp].dir;
+        }
+    }
+}
+
+void centipede::split(int x, int y){
+    int mushc = centipedes[x].body[y].x / 8;
+    int mushr = centipedes[x].body[y].y / 8;
+
+    if(mushc < 16 && mushc >= 0 && mushr < 20 && mushr >= 0){
+        mushrooms[mushr][mushc].x = mushc * 8;
+        mushrooms[mushr][mushc].y = ((mushr + 1) * 8) - 1;
+        mushrooms[mushr][mushc].alive = 1;
+        mushrooms[mushr][mushc].pose = 0;
+    }
+
+    if(y == centipedes[x].len - 1){
+        centipedes[x].len--;
+        score += 500;
+        drawhud = true;
+
+        return;
+    }
+    if(!y){
+        for(int i = 1; i < centipedes[x].len; i++) centipedes[x].body[i - 1] = centipedes[x].body[i];
+        centipedes[x].len--;
+
+        if(centipedes[x].len){
+            centipedes[x].body[0].poses[0] = greenhead;
+            centipedes[x].body[0].poses[1] = greenheaddown;
+            centipedes[x].body[0].poses[2] = greenheadright;
+            centipedes[x].body[0].index = 0;
+        }
+
+        score += 500;
+        drawhud = true;
+        return;
+    }
+
+    if(numcentipedes < 12){
+        centipedes[numcentipedes] = centipede(centipedes[x], y);
+        numcentipedes++;
+        score += 500;
+        drawhud = true;
     }
 }
 
@@ -118,7 +208,7 @@ mushroom::mushroom(int x, int y) : x(x), y(y), pose(0), alive(0){
 blaster::blaster() : x(0), y(0), lives(3){}
 
 //bullet
-bullet::bullet(int x, int y) : x(x), y(y){}
+bullet::bullet(int x, int y) : x(x), y(y), alive(0), prevx(-1), prevy(-1){}
 
 //spider
 spider::spider(int x, int y) : x(x), y(y), pose(0){
@@ -290,6 +380,65 @@ int pause(){
     return nextstate;
 }
 
+int playerdeath(){
+    ST7735_FillScreen(ST7735_BLACK);
+    Play_Audio(3);//playerdeath
+
+    player.lives--;
+
+    if(player.lives == 2){
+        LED_Off(4);
+        LED_On(2);
+        LED_Off(1);
+    }else if(player.lives == 1){
+        LED_Off(4);
+        LED_Off(2);
+        LED_On(1);
+    }else if(!player.lives){
+        LED_Off(4);
+        LED_Off(2);
+        LED_Off(1);
+        return 0;
+    }
+    
+    player.x = 56;
+    player.y = 160;
+    prevx = -1;
+    prevy = -1;
+
+    centipedes[0] = centipede();
+    numcentipedes = 1;
+
+    for(int i = 0; i < 4; i++){
+        bullets[i].prevx = -1;
+        bullets[i].prevy = -1;
+        bullets[i].alive = 0;
+    }
+    cooldown = 0;
+    centipedesoundtimer = 0;
+
+    drawhud = true;
+
+    return 1;
+}
+
+void spawnbullet(){
+    if(cooldown > 0) return;
+
+    for(int i = 0; i < 4; i++){
+        if(!bullets[i].alive){
+            Play_Audio(0);//shoot
+            bullets[i].alive = 1;
+            bullets[i].x = player.x + 3;
+            bullets[i].y = player.y - 7;
+            bullets[i].prevx = bullets[i].x;
+            bullets[i].prevy = bullets[i].y;
+            cooldown = 6;
+            break;
+        }
+    }
+}
+
 void gameinit(){
     //clear screen
     ST7735_FillScreen(ST7735_BLACK);
@@ -301,27 +450,55 @@ void gameinit(){
     player.x = 56;
     player.y = 160;
     player.lives = 3;
-    ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
+    prevx = -1;
+    prevy = -1;
 
     //spawn centipede
-    centipede temp;
-    for(int i = 0; i < temp.len; i++){
-        centipedes[0].body[i] = temp.body[i];
-        ST7735_DrawBitmap(centipedes[0].body[i].x, centipedes[0].body[i].y, centipedes[0].body[i].poses[centipedes[0].body[i].pose], 8, 8);
+    centipedes[0] = centipede();
+    numcentipedes = 1;
+
+    //reset bullets
+    for(int i = 0; i < 4; i++){
+        bullets[i].prevx = -1;
+        bullets[i].prevy = -1;
+        bullets[i].alive = 0;
     }
-    centipedesidx++;
+    
+    cooldown = 0;
+    centipedesoundtimer = 0;
+
+    //led stuff
+    LED_On(4);
+    LED_Off(2);
+    LED_Off(1);
+
+    drawhud = true;
 }
 
 int playgame(){
+
+    segment tempheads[12];
+
     while(1){
         while(!flag){}
         flag = 0;
 
+        for(int i = 0; i < 12; i++){
+            prevcentipedelen[i] = 0;
+        }
+        
+        for(int i = 0; i < numcentipedes; i++){
+            prevcentipedelen[i] = centipedes[i].len;
+            for(int j = 0; j < centipedes[i].len; j++){
+                prevcentipedes[i][j] = centipedes[i].body[j];
+            }
+        }
+        
 //----------inputs--------------------------------------------------------------
 
         //pause menu
         if(sw != 0 && prevsw == 0){
-            if(sw == 1){
+            if(sw == 2){
                 while(sw){
                     while(!flag){}
                     flag = 0;
@@ -330,26 +507,247 @@ int playgame(){
             }
         }
 
+        //shoot
+        if(sw != 0 && prevsw == 0){
+            if(sw == 1){
+                spawnbullet();
+            }
+        }
+
+//----------bullet movement-----------------------------------------------------
+
+    if(cooldown > 0) cooldown--;
+
+    //collision detection
+        for(int i = 0; i < 4; i++){
+            if(!bullets[i].alive) continue;
+
+            bullets[i].prevx = bullets[i].x;
+            bullets[i].prevy = bullets[i].y;
+            
+            int tempy = bullets[i].y - 3;
+            int topedge = tempy / 8;
+            int leftedge = bullets[i].x / 8;
+            int rightedge = (bullets[i].x + 1) / 8;
+
+            if (topedge < 0 || topedge >= 20 || leftedge < 0 || leftedge >= 16){
+                ST7735_FillRect(bullets[i].prevx, bullets[i].prevy - 3, 2, 4, ST7735_BLACK);
+                bullets[i].alive = 0;
+                continue;
+            }
+
+            int hitedge = -1;
+            if(mushrooms[topedge][leftedge].alive){
+                hitedge = leftedge;
+            }else if(rightedge != leftedge && rightedge >= 0 && rightedge < 16 && mushrooms[topedge][rightedge].alive){
+                hitedge = rightedge;
+            }
+
+            if(hitedge == -1){
+                bullets[i].y = tempy;
+            }else{
+                ST7735_FillRect(bullets[i].prevx, bullets[i].prevy - 3, 2, 4, ST7735_BLACK);
+                bullets[i].alive = 0;
+                Play_Audio(2);//enemydeath
+
+                if(mushrooms[topedge][hitedge].pose < 3){
+                    mushrooms[topedge][hitedge].pose++;
+                }else{
+                    mushrooms[topedge][hitedge].alive = 0;
+                    mushrooms[topedge][hitedge].pose = 0;
+                    ST7735_FillRect(mushrooms[topedge][hitedge].x, mushrooms[topedge][hitedge].y - 7, 8, 8, ST7735_BLACK);
+                    score += 100;
+                    drawhud = true;
+                }
+            }
+
+            if(!bullets[i].alive) continue;
+
+            bool centipedehit = false;
+            for(int k = 0; k < numcentipedes; k++){
+                if(centipedes[k].len <= 0) continue;
+
+                for(int j = 0; j < centipedes[k].len; j++){
+                    if(!bullets[i].alive) break;
+                    if(tempy <= centipedes[k].body[j].y && tempy >= centipedes[k].body[j].y - 7 && bullets[i].x >= centipedes[k].body[j].x && bullets[i].x <= centipedes[k].body[j].x + 7){
+                        ST7735_FillRect(bullets[i].prevx, bullets[i].prevy - 3, 2, 4, ST7735_BLACK);
+                        bullets[i].alive = 0;
+                        Play_Audio(2);//enemydeath
+                        centipedes[k].split(k, j);
+                        centipedehit = true;
+                        break;
+                    }
+                }
+
+                if(centipedehit) break;
+            }
+        }
+
 //----------centipede logic--------------------------------------------------------------
 
-        segment prevcentipede[12];
-        segment tempcentipede[12];
+        if(centipedesoundtimer > 0) centipedesoundtimer--;
 
-        for(int i = 0; i < centipedes[0].len; i++){
-            tempcentipede[i] = centipedes[0].body[i];
-            tempcentipede[i].x++;
-        }
-
-        //full copy for drawing black rectangles
-        for(int i = 0; i < centipedes[0].len; i++){
-            prevcentipede[i] = centipedes[0].body[i];
-        }
-
-        //collision logic
-        if(tempcentipede[0].x <= 120){
-            for(int i = 0; i < centipedes[0].len; i++){
-                centipedes[0].body[i].x = tempcentipede[i].x;
+        for(int i = 0; i < numcentipedes; i++){
+            if(centipedes[i].len > 0){
+                if(!centipedesoundtimer){
+                    Play_Audio(1);//step
+                    centipedesoundtimer = 8;
+                }
+                break;
             }
+        }
+
+        for(int j = 0; j < numcentipedes; j++){
+            if(centipedes[j].len <= 0) continue;
+            tempheads[j] = centipedes[j].body[0];
+
+            //collision detection
+            if(!centipedes[j].turning){
+                if(tempheads[j].dir == -1){
+                    int rightedge = (tempheads[j].x + 7) / 8;
+                    int botedge = tempheads[j].y / 8;
+
+                    bool blocked = (rightedge >= 16 || mushrooms[botedge][rightedge].alive);
+
+                    if(!blocked){
+                        for(int a = 0; a < numcentipedes; a++){
+                            if(a == j) continue;
+                            for(int b = 0; b < centipedes[a].len; b++){
+                                int tempx = centipedes[a].body[b].x / 8;
+                                int tempy = centipedes[a].body[b].y / 8;
+
+                                if(tempx == rightedge && tempy == botedge){
+                                    blocked = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if(blocked) break;
+                    }
+
+                    if(blocked){
+                        centipedes[j].turning = 1;
+                        centipedes[j].counter = 0;
+                        centipedes[j].prevdir = tempheads[j].dir;
+                        tempheads[j].dir = 0;
+                        tempheads[j].pose = 1;
+                    }
+
+                }else if(tempheads[j].dir == 1){
+                    int leftedge = (tempheads[j].x - 1) / 8;
+                    int botedge = tempheads[j].y / 8;
+
+                    bool blocked = (tempheads[j].x == 0);
+
+                    if(!blocked){
+                        for(int a = 0; a < numcentipedes; a++){
+                            if(a == j) continue;
+                            for(int b = 0; b < centipedes[a].len; b++){
+                                int tempx = centipedes[a].body[b].x / 8;
+                                int tempy = centipedes[a].body[b].y / 8;
+
+                                if(tempx == leftedge && tempy == botedge){
+                                    blocked = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if(blocked) break;
+                    }
+
+                    if(blocked){
+                        centipedes[j].turning = 1;
+                        centipedes[j].counter = 0;
+                        centipedes[j].prevdir = tempheads[j].dir;
+                        tempheads[j].dir = 0;
+                        tempheads[j].pose = 1;
+                    }
+                }
+            }
+
+            if(tempheads[j].dir == -1){
+                tempheads[j].x++;
+                tempheads[j].pose = 2;
+            }else if(tempheads[j].dir == 1){
+                tempheads[j].x--;
+                tempheads[j].pose = 0;
+            }else if(tempheads[j].dir == 0){
+                tempheads[j].y++;
+                tempheads[j].pose = 1;
+            }
+            
+            centipedes[j].body[0] = tempheads[j];
+
+            for(int i = 95; i > 0; i--){
+                centipedes[j].breadcrumbs[i] = centipedes[j].breadcrumbs[i - 1];
+            }
+
+            centipedes[j].breadcrumbs[0].x = centipedes[j].body[0].x;
+            centipedes[j].breadcrumbs[0].y = centipedes[j].body[0].y;
+            centipedes[j].breadcrumbs[0].dir = centipedes[j].body[0].dir;
+
+            if(centipedes[j].turning){
+                centipedes[j].counter++;
+                if(centipedes[j].counter == 8){
+                    centipedes[j].turning = 0;
+                    centipedes[j].counter = 0;
+                    centipedes[j].body[0].dir = centipedes[j].prevdir * -1;
+
+                    if(centipedes[j].body[0].dir == 1){
+                        centipedes[j].body[0].pose = 0;
+                    }else if(centipedes[j].body[0].dir == -1){
+                        centipedes[j].body[0].pose = 2;
+                    }
+                }
+            }
+
+            //update body
+            for(int i = 1; i < centipedes[j].len; i++){
+                int actual = i * 8;
+                centipedes[j].body[i].x = centipedes[j].breadcrumbs[actual].x;
+                centipedes[j].body[i].y = centipedes[j].breadcrumbs[actual].y;
+                centipedes[j].body[i].dir = centipedes[j].breadcrumbs[actual].dir;
+
+                if(centipedes[j].body[i].dir == 1){
+                    centipedes[j].body[i].pose = 0;
+                }else if(centipedes[j].body[i].dir == -1){
+                    centipedes[j].body[i].pose = 2;
+                }else if(centipedes[j].body[i].dir == 0){
+                    centipedes[j].body[i].pose = 1;
+                }
+            }
+
+            for(int i = 0; i < centipedes[j].len; i++){
+                int ctop = centipedes[j].body[i].y - 7;
+                int cbot = centipedes[j].body[i].y;
+                int cright = centipedes[j].body[i].x + 7;
+                int cleft = centipedes[j].body[i].x;
+
+                int ptop = player.y - 7;
+                int pbot = player.y;
+                int pright = player.x + 6;
+                int pleft = player.x;
+
+                if(!(cright < pleft || cleft > pright || cbot < ptop || ctop > pbot)) return playerdeath();
+            }
+
+            for(int i = 0; i < centipedes[j].len; i++){
+                if(centipedes[j].body[i].y >= 159) return playerdeath();
+            }
+        }
+
+        bool isthereacentipede = false;
+        for(int i = 0; i < numcentipedes; i++){
+            if(centipedes[i].len > 0){
+                isthereacentipede = true;
+                break;
+            }
+        }
+
+        if(!isthereacentipede){
+            centipedes[0] = centipede();
+            numcentipedes = 1;
+            centipedesoundtimer = 0;
         }
 
 //----------player logic--------------------------------------------------------------
@@ -398,22 +796,47 @@ int playgame(){
 
 //----------rendering--------------------------------------------------------------
 
+        //score and lives
+        if(drawhud){
+            ST7735_FillRect(0, 0, 128, 8, ST7735_BLACK);
+            if(isEng){
+                ST7735_SetCursor(0, 0);
+                ST7735_OutString(scoretxt);
+                ST7735_OutUDec(score);
+                ST7735_SetCursor(12, 0);
+                ST7735_OutString(livestxt);
+                ST7735_OutUDec(player.lives);
+            }else{
+                ST7735_SetCursor(0, 0);
+                ST7735_OutString(esscoretxt);
+                ST7735_OutUDec(score);
+                ST7735_SetCursor(12, 0);
+                ST7735_OutString(eslivestxt);
+                ST7735_OutUDec(player.lives);
+            }
+            drawhud = false;
+        }
+
         //draw mushrooms
         for(int i = 0; i < 20; i++){
             for(int j = 0; j < 16; j++){
                 if(mushrooms[i][j].alive){
-                    ST7735_DrawBitmap(mushrooms[i][j].x, mushrooms[i][j].y, greenmushroom1, 8, 8);
+                    ST7735_DrawBitmap(mushrooms[i][j].x, mushrooms[i][j].y, mushrooms[i][j].poses[mushrooms[i][j].pose], 8, 8);
                 }
             }
         }
 
         //draw centipedes
-        for(int i = 0; i < centipedes[0].len; i++){
-           ST7735_FillRect(prevcentipede[i].x, prevcentipede[i].y - 7, 8, 8, ST7735_BLACK); 
-        }
+        for(int j = 0; j < numcentipedes; j++){
+            if(centipedes[j].len <= 0 && prevcentipedelen[j] <= 0) continue;
+            
+            for(int i = 0; i < prevcentipedelen[j]; i++){
+                ST7735_FillRect(prevcentipedes[j][i].x, prevcentipedes[j][i].y - 7, 8, 8, ST7735_BLACK); 
+            }
 
-        for(int i = 0; i < centipedes[0].len; i++){
-            ST7735_DrawBitmap(centipedes[0].body[i].x, centipedes[0].body[i].y, centipedes[0].body[i].poses[centipedes[0].body[i].pose], 8, 8);
+            for(int i = 0; i < centipedes[j].len; i++){
+                ST7735_DrawBitmap(centipedes[j].body[i].x, centipedes[j].body[i].y, centipedes[j].body[i].poses[centipedes[j].body[i].pose], 8, 8);
+            }
         }
 
         //draw player
@@ -423,6 +846,18 @@ int playgame(){
             prevx = player.x;
             prevy = player.y;
         }
+
+        //draw bullets
+        for(int i = 0; i < 4; i++){
+            if(bullets[i].alive){
+                ST7735_FillRect(bullets[i].prevx, bullets[i].prevy - 3, 2, 4, ST7735_BLACK);
+                ST7735_DrawBitmap(bullets[i].x, bullets[i].y, greenbullet, 2, 4);
+            }
+        }
     }
+
+    LED_Off(4);
+    LED_Off(2);
+    LED_Off(1);
     return 2;
 }
