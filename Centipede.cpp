@@ -2,110 +2,100 @@
 #include "images/images.h"
 #include "../inc/ST7735.h"
 
+//game stuff
+extern bool newgame;
+extern int flag;
+extern bool isEng;
+
+//input stuff
+extern int sw;
+extern int prevsw;
+
+//player stuff
+extern blaster player;
+extern int velx, vely;
+extern int prevx;
+extern int prevy;
+
+//centipede stuff
+centipede centipedes[12];
+int centipedesidx = 0;
+
+//text assets
+char PickEng[] = "[A] English";
+char PickSpn[] = "[B] Espa\xA4ol";
+
+//English Menu Strings
+char Eng1[] = "[A] Play";
+char Eng2[] = "[B] Language";
+
+//Spanish Menu Strings
+char Spn1[] = "[A] Jugar";
+char Spn2[] = "[B] Idioma";
+
+//pause strings
+char EngResume[] = "[A] Resume";
+char EngQuit[] = "[B] Quit";
+char SpnResume[] = "[A] Continuar";
+char SpnQuit[] = "[B] Salir";
+
 //segments
-segment::segment() : x(0), y(0), pose(0), index(0){
-    poses[0] = greenhead1;
-    poses[1] = greenhead2;
-    poses[2] = greenhead3;
-    poses[3] = greenhead4;
-    poses[4] = greenhead5;
-    poses[5] = greenhead6;
-    poses[6] = greenhead7;
-    poses[7] = greenhead8;
-    poses[8] = greenheaddown1;
-    poses[9] = greenheaddown2;
-    poses[10] = greenheaddown3;
-    poses[11] = greenheaddown4;
-    poses[12] = greenheaddown5;
-    poses[13] = greenheaddown6;
-    poses[14] = greenheaddown7;
-    poses[15] = greenheaddown8;
-    poses[16] = greenheadright1;
-    poses[17] = greenheadright2;
-    poses[18] = greenheadright3;
-    poses[19] = greenheadright4;
-    poses[20] = greenheadright5;
-    poses[21] = greenheadright6;
-    poses[22] = greenheadright7;
-    poses[23] = greenheadright8;
+segment::segment() : x(0), y(0), pose(0), index(0), dir(-1){
+    poses[0] = greenhead;
+    poses[1] = greenheaddown;
+    poses[2] = greenheadright;
 }
 
-segment::segment(int x, int y, int i) : x(x), y(y), pose(0), index(i){
+segment::segment(int x, int y, int i, int dir) : x(x), y(y), index(i), dir(dir){
     if(!index){
-        poses[0] = greenhead1;
-        poses[1] = greenhead2;
-        poses[2] = greenhead3;
-        poses[3] = greenhead4;
-        poses[4] = greenhead5;
-        poses[5] = greenhead6;
-        poses[6] = greenhead7;
-        poses[7] = greenhead8;
-        poses[8] = greenheaddown1;
-        poses[9] = greenheaddown2;
-        poses[10] = greenheaddown3;
-        poses[11] = greenheaddown4;
-        poses[12] = greenheaddown5;
-        poses[13] = greenheaddown6;
-        poses[14] = greenheaddown7;
-        poses[15] = greenheaddown8;
-        poses[16] = greenheadright1;
-        poses[17] = greenheadright2;
-        poses[18] = greenheadright3;
-        poses[19] = greenheadright4;
-        poses[20] = greenheadright5;
-        poses[21] = greenheadright6;
-        poses[22] = greenheadright7;
-        poses[23] = greenheadright8;
+        poses[0] = greenhead;
+        poses[1] = greenheaddown;
+        poses[2] = greenheadright;
     }else{
-        poses[0] = greenbody1;
-        poses[1] = greenbody2;
-        poses[2] = greenbody3;
-        poses[3] = greenbody4;
-        poses[4] = greenbody5;
-        poses[5] = greenbody6;
-        poses[6] = greenbody7;
-        poses[7] = greenbody8;
-        poses[8] = greenbodydown1;
-        poses[9] = greenbodydown2;
-        poses[10] = greenbodydown3;
-        poses[11] = greenbodydown4;
-        poses[12] = greenbodydown5;
-        poses[13] = greenbodydown6;
-        poses[14] = greenbodydown7;
-        poses[15] = greenbodydown8;
-        poses[16] = greenbodyright1;
-        poses[17] = greenbodyright2;
-        poses[18] = greenbodyright3;
-        poses[19] = greenbodyright4;
-        poses[20] = greenbodyright5;
-        poses[21] = greenbodyright6;
-        poses[22] = greenbodyright7;
-        poses[23] = greenbodyright8;
+        poses[0] = greenbody;
+        poses[1] = greenbodydown;
+        poses[2] = greenbodyright;
+    }
+
+    if(dir == -1){
+        pose = 2;
+    }else if(dir == 1){
+        pose = 0;
+    }else{
+        pose = 1;
     }
 }
 
 //centipede
-centipede::centipede() : len(12), dir(-1){
+centipede::centipede() : len(12), index(0){
     for(int i = 0; i < len; i++){
         body[i].x = 56 - (i * 8);
         body[i].y = 7;
 
-        body[i].poses[0] = greenbody1;
-        body[i].poses[1] = greenbody2;
-        body[i].poses[2] = greenbody3;
-        body[i].poses[3] = greenbody4;
-        body[i].poses[4] = greenbody5;
-        body[i].poses[5] = greenbody6;
-        body[i].poses[6] = greenbody7;
-        body[i].poses[7] = greenbody8;
+        if(!i){
+            body[i].poses[0] = greenhead;
+            body[i].poses[1] = greenheaddown;
+            body[i].poses[2] = greenheadright;
+            body[i].pose = 2;
+        }else{
+            body[i].poses[0] = greenbody;
+            body[i].poses[1] = greenbodydown;
+            body[i].poses[2] = greenbodyright;
+            body[i].pose = 2;
+        }
 
-        body[i].pose
+        body[i].index = 0;
+        body[i].dir = -1;
     }
 }
 
-centipede::centipede(segment seg, int len, int dir) : len(len), dir(dir){
+centipede::centipede(centipede& c, int idx){
+    index = centipedesidx;
+    int temp = c.len;
+    c.len -= idx + 1;
+    len = temp - c.len - 1;
     for(int i = 0; i < len; i++){
-        body[i] = segment(seg.x + i * 14 * dir, seg.y, i);
+        body[i] = c.body[i];
     }
 }
 
@@ -115,15 +105,6 @@ mushroom::mushroom() : x(0), y(0), pose(0), alive(0){
     poses[1] = greenmushroom2;
     poses[2] = greenmushroom3;
     poses[3] = greenmushroom4;
-
-    positions[0][0] = 0;
-    positions[0][1] = 8;
-    positions[1][0] = 1;
-    positions[1][1] = 7;
-    positions[2][0] = 1;
-    positions[2][1] = 6;
-    positions[3][0] = 2;
-    positions[3][1] = 4;
 }
 
 mushroom::mushroom(int x, int y) : x(x), y(y), pose(0), alive(0){
@@ -131,15 +112,6 @@ mushroom::mushroom(int x, int y) : x(x), y(y), pose(0), alive(0){
     poses[1] = greenmushroom2;
     poses[2] = greenmushroom3;
     poses[3] = greenmushroom4;
-
-    positions[0][0] = 0;
-    positions[0][1] = 8;
-    positions[1][0] = 1;
-    positions[1][1] = 7;
-    positions[2][0] = 1;
-    positions[2][1] = 6;
-    positions[3][0] = 2;
-    positions[3][1] = 4;
 }
 
 //blaster
@@ -217,63 +189,32 @@ void mushroom_gen(){
     }
 }
 
-//centipede stuff
-centipede centipedes[12];
-
-//game stuff
-
-extern bool newgame;
-extern blaster player;
-
-extern int velx, vely;
-extern int sw;
-extern int prevsw;
-extern int swlast;
-extern int flag;
-
-extern int prevx;
-extern int prevy;
-
-extern bool isEng;
-
 void language(){
     ST7735_FillScreen(ST7735_BLACK);
     ST7735_DrawBitmap(21, 30, centipede_logo, 84, 10);
-    //select Language Variables
-  char* PickEng = "[A] English";
-  char* PickSpn = "[B] Espanol";
 
-  //Select Language, English or Spanish
-  ST7735_DrawString(4, 6, PickEng, ST7735_WHITE);
-  ST7735_DrawString(4, 8, PickSpn, ST7735_WHITE);
+    ST7735_DrawString(4, 6, PickEng, ST7735_WHITE);
+    ST7735_DrawString(4, 8, PickSpn, ST7735_WHITE);
 
-  while(1){
-    while(!flag){}
-    flag = 0;
-    
-    if(sw != 0 && prevsw == 0){
-      if(sw == 2){ 
-        isEng = true;
-      }else if(sw == 1){
-        isEng = false;
-      }
-      while(sw){
+    while(1){
         while(!flag){}
         flag = 0;
-      }
-      break;
-    }
+    
+        if(sw != 0 && prevsw == 0){
+        if(sw == 2){ 
+            isEng = true;
+        }else if(sw == 1){
+            isEng = false;
+        }
+        while(sw){
+            while(!flag){}
+            flag = 0;
+        }
+        break;
+        }
     prevsw = sw;
-  }
+    }
 }
-
-//English Menu Strings
-char* Eng1 = "[A] Play";
-char* Eng2 = "[B] Language";
-
-//Spanish Menu Strings
-char* Spn1 = "[A] Jugar";
-char* Spn2 = "[B] Idioma";
 
 int menu(){
     int nextstate;
@@ -311,12 +252,6 @@ int menu(){
     }
     return nextstate;
 }
-
-//pause strings
-char* EngResume = "[A] Resume";
-char* EngQuit = "[B] Quit";
-char* SpnResume = "[A] Continuar";
-char* SpnQuit = "[B] Salir";
 
 int pause(){
     int nextstate;
@@ -358,13 +293,23 @@ int pause(){
 void gameinit(){
     //clear screen
     ST7735_FillScreen(ST7735_BLACK);
+    
     //spawn mushrooms
     mushroom_gen();
+
     //spawn player
     player.x = 56;
     player.y = 160;
     player.lives = 3;
     ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
+
+    //spawn centipede
+    centipede temp;
+    for(int i = 0; i < temp.len; i++){
+        centipedes[0].body[i] = temp.body[i];
+        ST7735_DrawBitmap(centipedes[0].body[i].x, centipedes[0].body[i].y, centipedes[0].body[i].poses[centipedes[0].body[i].pose], 8, 8);
+    }
+    centipedesidx++;
 }
 
 int playgame(){
@@ -372,7 +317,9 @@ int playgame(){
         while(!flag){}
         flag = 0;
 
-        //inputs
+//----------inputs--------------------------------------------------------------
+
+        //pause menu
         if(sw != 0 && prevsw == 0){
             if(sw == 1){
                 while(sw){
@@ -383,10 +330,35 @@ int playgame(){
             }
         }
 
-        //player logic
+//----------centipede logic--------------------------------------------------------------
+
+        segment prevcentipede[12];
+        segment tempcentipede[12];
+
+        for(int i = 0; i < centipedes[0].len; i++){
+            tempcentipede[i] = centipedes[0].body[i];
+            tempcentipede[i].x++;
+        }
+
+        //full copy for drawing black rectangles
+        for(int i = 0; i < centipedes[0].len; i++){
+            prevcentipede[i] = centipedes[0].body[i];
+        }
+
+        //collision logic
+        if(tempcentipede[0].x <= 120){
+            for(int i = 0; i < centipedes[0].len; i++){
+                centipedes[0].body[i].x = tempcentipede[i].x;
+            }
+        }
+
+//----------player logic--------------------------------------------------------------
+
+        //trial new position
         int tempx = player.x + velx;
         int tempy = player.y + vely;
 
+        //collison logic
         if(tempx < 0) tempx = 0;
         if(tempx > 121) tempx = 121;
         if(tempy < 135) tempy = 135;
@@ -424,6 +396,8 @@ int playgame(){
             if(!mushrooms[botedge][leftedge].alive && !mushrooms[botedge][rightedge].alive) player.y = tempy;
         }
 
+//----------rendering--------------------------------------------------------------
+
         //draw mushrooms
         for(int i = 0; i < 20; i++){
             for(int j = 0; j < 16; j++){
@@ -431,6 +405,15 @@ int playgame(){
                     ST7735_DrawBitmap(mushrooms[i][j].x, mushrooms[i][j].y, greenmushroom1, 8, 8);
                 }
             }
+        }
+
+        //draw centipedes
+        for(int i = 0; i < centipedes[0].len; i++){
+           ST7735_FillRect(prevcentipede[i].x, prevcentipede[i].y - 7, 8, 8, ST7735_BLACK); 
+        }
+
+        for(int i = 0; i < centipedes[0].len; i++){
+            ST7735_DrawBitmap(centipedes[0].body[i].x, centipedes[0].body[i].y, centipedes[0].body[i].poses[centipedes[0].body[i].pose], 8, 8);
         }
 
         //draw player

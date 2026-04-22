@@ -46,21 +46,21 @@ void PLL_Init(void){ // set phase lock loop (PLL)
 
 SlidePot Sensor(1804, 104); // copy calibration from Lab 7
 
+//game stuff
 int state = 3; // 0 is menu, 1 is game, 2 is pause, 3 is language select
 bool newgame = false;
+int flag = 0;
+bool isEng;
 
-//player object
-blaster player;
-
-int velx, vely;
+//input stuff
 int sw;
 int prevsw = 0;
-int flag = 0;
 
+//player stuff
+blaster player;
+int velx, vely;
 int prevx = 56;
 int prevy = 160;
-
-bool isEng;
 
 // games engine runs at 30Hz
 void TIMG12_IRQHandler(void){
@@ -171,15 +171,35 @@ int main2(void){ // main2
 }
 
 // use main3 to test switches and LEDs
-int main3(void){ // main3
+int main(void){ // main3
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
   Switch_Init(); // initialize switches
   LED_Init(); // initialize LED
+  TimerG12_IntArm(2666667, 1);
+  __enable_irq();
   while(1){
     // write code to test switches and LEDs
+    while(!flag){}
+    flag = 0;
+    
+    if(sw != 0 && prevsw == 0){
+      if(sw == 1){
+        LED_On(4);
+      }else if(sw == 2){
+        LED_On(2);
+      }
+    }
 
+    while(sw){
+      while(!flag){}
+      flag = 0;
+    }
+    LED_Off(1);
+    LED_Off(2);
+    LED_Off(4);
+    prevsw = sw;
   }
 }
 // use main4 to test sound outputs
@@ -190,28 +210,28 @@ int main4(void){ uint32_t last=0,now;
   Switch_Init(); // initialize switches
   LED_Init(); // initialize LED
   Sound_Init();  // initialize sound
+  Sound_Start(7256);
   //TExaS_Init(ADC0,6,0); // ADC1 channel 6 is PB20, TExaS scope
+  TimerG12_IntArm(2666667, 1);
   __enable_irq();
   while(1){
-    now = Switch_In(); // one of your buttons
-    if((last == 0)&&(now == 1)){
-      Sound_Shoot(); // call one of your sounds
-    }
-    if((last == 0)&&(now == 2)){
-      Sound_Killed(); // call one of your sounds
-    }
-    if((last == 0)&&(now == 4)){
-      Sound_Explosion(); // call one of your sounds
-    }
-    if((last == 0)&&(now == 8)){
-      Sound_Fastinvader1(); // call one of your sounds
-    }
-    // modify this to test all your sounds
+    Play_Audio(0);//shoot
+    Clock_Delay1ms(1500);
+    Play_Audio(1);//step
+    Clock_Delay1ms(1500);
+    Play_Audio(2);//enemydeath
+    Clock_Delay1ms(1500);
+    Play_Audio(3);//playerdeath
+    Clock_Delay1ms(1500);
+    Play_Audio(4);//spider
+    Clock_Delay1ms(1500);
+    Play_Audio(5);//flea
+    Clock_Delay1ms(1500);
   }
 }
 
 // ALL ST7735 OUTPUT MUST OCCUR IN MAIN
-int main(void){ // final main
+int main10(void){ // final main
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
@@ -220,8 +240,9 @@ int main(void){ // final main
   Sensor.Init(); // PB18 = ADC1 channel 5, slidepot
   Switch_Init(); // initialize switches
   JoyStick_Init(); // initalize joystick
-  //LED_Init();    // initialize LED
-  //Sound_Init();  // initialize sound
+  LED_Init();    // initialize LED
+  Sound_Init();  // initialize sound
+  Sound_Start(7256);
   //TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26
     // initialize interrupts on TimerG12 at 30 Hz
   TimerG12_IntArm(2666667, 1);

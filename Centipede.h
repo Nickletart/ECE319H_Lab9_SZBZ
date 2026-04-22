@@ -1,27 +1,27 @@
 #ifndef CENTIPEDE_H_
 #define CENTIPEDE_H_
 
-#define MAXLENGTH 12
-
 class segment{
     public:
     int x;
     int y;
-    const unsigned short* poses[8];
+    const unsigned short* poses[3];
     int pose;
     int index;
+    int dir; // 1 is left -1 is right, 0 is down
 
     segment();
-    segment(int, int, int);
+    segment(int, int, int, int);
 };
 
 class centipede{
     public:
-    segment body[MAXLENGTH];
+    segment body[12];
     int len;
-    int dir; //-1 is right 1 is left
+    int index;
 
-    centipede(segment, int, int);
+    centipede();
+    centipede(centipede&, int);
     void split(int); //takes in segment index
 };
 
@@ -32,7 +32,6 @@ class mushroom{
     const unsigned short* poses[4];
     int pose;
     int alive;
-    int positions[4][2];
 
     mushroom();
     mushroom(int, int);
