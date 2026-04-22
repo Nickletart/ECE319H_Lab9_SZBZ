@@ -8,6 +8,8 @@
 #define PB3INDEX  15
 #define PB4INDEX  16
 
+extern uint32_t volume;
+
 typedef struct AudioTrack{
   const uint8_t* sample;
   int size;
@@ -727,8 +729,10 @@ const uint8_t sfx_flea[2048] = {
    9,  9,  8,  9, 10, 11, 13, 15, 17, 19, 20, 21, 22, 22, 22, 21
 };
 
-int SoundIndex = 0;
-AudioTrack* CurrentTrack = 0;
+AudioTrack* CurrentTracks[8];
+int SoundIndices[8];
+int shootch = 0;
+int edeathch = 0;
 AudioTrack TrackList[6] = {{sfx_shoot, 1792}, {sfx_centipede_step, 640}, {sfx_enemy_death, 2304}, {sfx_player_death, 3584}, {sfx_spider, 768}, {sfx_flea, 2048}};
 
 void Sound_Out(uint32_t data){
@@ -744,8 +748,12 @@ void Sound_Init(void){
   IOMUX->SECCFG.PINCM[PB4INDEX] = 0x00000081;
   GPIOB->DOE31_0 |= 31;
 
-  SoundIndex = 0;
-  CurrentTrack = 0;
+  for(int i = 0; i < 8; i++){
+    CurrentTracks[i] = 0;
+    SoundIndices[i] = 0;
+  }
+  shootch = 0;
+  edeathch = 0;
   Sound_Out(0);
 }
 
@@ -759,17 +767,63 @@ void Sound_Start(uint32_t period){
 
 extern "C" void SysTick_Handler(void);
 void SysTick_Handler(void){ // called at 11 kHz
-  if(!CurrentTrack) {Sound_Out(0); return;}
-  Sound_Out(CurrentTrack->sample[SoundIndex]);
-  SoundIndex++;
-  if(SoundIndex >= CurrentTrack->size){
-    SoundIndex = 0;
-    CurrentTrack = 0;
+  int channels = 0;
+  int sum = 0;
+
+  for(int i = 0; i < 8; i++){
+    if(CurrentTracks[i]){
+      sum += CurrentTracks[i]->sample[SoundIndices[i]];
+      channels++;
+
+      SoundIndices[i]++;
+      if(SoundIndices[i] >= CurrentTracks[i]->size){
+        SoundIndices[i] = 0;
+        CurrentTracks[i] = 0;
+      }
+    }
+  }
+
+  if(!channels || !volume){
     Sound_Out(0);
+  }else{
+    int output = ((sum / channels) * volume) / 4;
+    if(output > 31) output = 31;
+    Sound_Out(output);
   }
 }
 
 void Play_Audio(int trackid){
-  CurrentTrack = &TrackList[trackid];
-  SoundIndex = 0;
+  if(!trackid){
+    if(!shootch){
+      CurrentTracks[4] = &TrackList[0];
+      SoundIndices[4] = 0;
+      shootch = 1;
+    }else{
+      CurrentTracks[5] = &TrackList[0];
+      SoundIndices[5] = 0;
+      shootch = 0;
+    }
+  }else if(trackid == 1){
+    CurrentTracks[0] = &TrackList[1];
+    SoundIndices[0] = 0;
+  }else if(trackid == 2){
+    if(!edeathch){
+      CurrentTracks[6] = &TrackList[2];
+      SoundIndices[6] = 0;
+      edeathch = 1;
+    }else{
+      CurrentTracks[7] = &TrackList[2];
+      SoundIndices[7] = 0;
+      edeathch = 0;
+    }
+  }else if(trackid == 3){
+    CurrentTracks[3] = &TrackList[3];
+    SoundIndices[3] = 0;
+  }else if(trackid == 4){
+    CurrentTracks[1] = &TrackList[4];
+    SoundIndices[1] = 0;
+  }else if(trackid == 5){
+    CurrentTracks[2] = &TrackList[5];
+    SoundIndices[2] = 0;
+  }
 }

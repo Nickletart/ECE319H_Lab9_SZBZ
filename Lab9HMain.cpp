@@ -12,7 +12,7 @@
 #include "../inc/LaunchPad.h"
 //#include "../inc/TExaS.h"
 #include "../inc/Timer.h"
-#include "../inc/SlidePot.h"
+//#include "../inc/SlidePot.h"
 #include "../inc/DAC5.h"
 #include "SmallFont.h"
 #include "LED.h"
@@ -20,7 +20,7 @@
 #include "Sound.h"
 #include "images/images.h"
 //#include "../inc/JoyStick.h" 
-#include "JoyStick.h"
+#include "JoyStick&Slidepot.h"
 #include "Centipede.h"
 
 extern "C" void __disable_irq(void);
@@ -44,7 +44,8 @@ void PLL_Init(void){ // set phase lock loop (PLL)
 //  return (Random32()>>16)%n;
 //}
 
-SlidePot Sensor(1804, 104); // copy calibration from Lab 7
+//SlidePot Sensor(1804, 104); // copy calibration from Lab 7
+int volume = 4;
 
 //game stuff
 int state = 3; // 0 is menu, 1 is game, 2 is pause, 3 is language select
@@ -65,14 +66,15 @@ int prevy = 160;
 // games engine runs at 30Hz
 void TIMG12_IRQHandler(void){
   if((TIMG12->CPU_INT.IIDX) == 1){ // this will acknowledge
-    GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
-    GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
+    //GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
+    //GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
 
     sw = Switch_In();
-    JoyStick_In(&velx, &vely);
+    JoyStickSlidepot_In(&velx, &vely, &volume);
+    
     flag = 1;
 
-    GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
+    //GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
   }
 }
 
@@ -171,7 +173,7 @@ int main2(void){ // main2
 }
 
 // use main3 to test switches and LEDs
-int main(void){ // main3
+int main3(void){ // main3
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
@@ -231,15 +233,15 @@ int main4(void){ uint32_t last=0,now;
 }
 
 // ALL ST7735 OUTPUT MUST OCCUR IN MAIN
-int main10(void){ // final main
+int main(void){ // final main
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
   ST7735_InitPrintf(INITR_REDTAB); // INITR_REDTAB for AdaFruit, INITR_BLACKTAB for HiLetGo
   ST7735_FillScreen(ST7735_BLACK);
-  Sensor.Init(); // PB18 = ADC1 channel 5, slidepot
   Switch_Init(); // initialize switches
-  JoyStick_Init(); // initalize joystick
+  JoyStickSlidepot_Init(); // initalize joystick
+  //Sensor.Init(); // PB18 = ADC1 channel 5, slidepot
   LED_Init();    // initialize LED
   Sound_Init();  // initialize sound
   Sound_Start(7256);

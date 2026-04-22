@@ -35,9 +35,7 @@ int prevcentipedelen[12];
 
 //hud assets
 char scoretxt[] = "Score: ";
-char livestxt[] = "Lives: ";
 char esscoretxt[] = "Puntos: ";
-char eslivestxt[] = "Vidas: ";
 
 //text assets
 char PickEng[] = "[A] English";
@@ -117,6 +115,7 @@ centipede::centipede(centipede& c, int idx){
     turning = 1;
     counter = 0;
     prevdir = c.body[idx + 1].dir;
+    if(!prevdir) prevdir = c.prevdir;
     index = numcentipedes;
 
     int temp = c.len;
@@ -149,8 +148,8 @@ centipede::centipede(centipede& c, int idx){
 
 void centipede::split(int x, int y){
     int mushc = centipedes[x].body[y].x / 8;
-    int mushr = centipedes[x].body[y].y / 8;
-
+    int mushr = (centipedes[x].body[y].y - 7) / 8;
+    
     if(mushc < 16 && mushc >= 0 && mushr < 20 && mushr >= 0){
         mushrooms[mushr][mushc].x = mushc * 8;
         mushrooms[mushr][mushc].y = ((mushr + 1) * 8) - 1;
@@ -160,7 +159,8 @@ void centipede::split(int x, int y){
 
     if(y == centipedes[x].len - 1){
         centipedes[x].len--;
-        score += 500;
+        score += 200;
+        if(score > 999999999) score = 999999999;
         drawhud = true;
 
         return;
@@ -176,7 +176,8 @@ void centipede::split(int x, int y){
             centipedes[x].body[0].index = 0;
         }
 
-        score += 500;
+        score += 200;
+        if(score > 999999999) score = 999999999;
         drawhud = true;
         return;
     }
@@ -184,7 +185,8 @@ void centipede::split(int x, int y){
     if(numcentipedes < 12){
         centipedes[numcentipedes] = centipede(centipedes[x], y);
         numcentipedes++;
-        score += 500;
+        score += 200;
+        if(score > 999999999) score = 999999999;
         drawhud = true;
     }
 }
@@ -442,6 +444,8 @@ void spawnbullet(){
 void gameinit(){
     //clear screen
     ST7735_FillScreen(ST7735_BLACK);
+
+    score = 0;
     
     //spawn mushrooms
     mushroom_gen();
@@ -557,6 +561,7 @@ int playgame(){
                     mushrooms[topedge][hitedge].pose = 0;
                     ST7735_FillRect(mushrooms[topedge][hitedge].x, mushrooms[topedge][hitedge].y - 7, 8, 8, ST7735_BLACK);
                     score += 100;
+                    if(score > 999999999) score = 999999999;
                     drawhud = true;
                 }
             }
@@ -621,8 +626,8 @@ int playgame(){
                                     break;
                                 }
                             }
+                            if(blocked) break;
                         }
-                        if(blocked) break;
                     }
 
                     if(blocked){
@@ -637,7 +642,7 @@ int playgame(){
                     int leftedge = (tempheads[j].x - 1) / 8;
                     int botedge = tempheads[j].y / 8;
 
-                    bool blocked = (tempheads[j].x == 0);
+                    bool blocked = (tempheads[j].x == 0 || mushrooms[botedge][leftedge].alive);
 
                     if(!blocked){
                         for(int a = 0; a < numcentipedes; a++){
@@ -651,8 +656,8 @@ int playgame(){
                                     break;
                                 }
                             }
+                            if(blocked) break;
                         }
-                        if(blocked) break;
                     }
 
                     if(blocked){
@@ -745,6 +750,15 @@ int playgame(){
         }
 
         if(!isthereacentipede){
+            for(int i = 0; i < 12; i++){
+                for(int j = 0; j < prevcentipedelen[i]; j++){
+                    ST7735_FillRect(prevcentipedes[i][j].x, prevcentipedes[i][j].y - 7, 8, 8, ST7735_BLACK);
+                }
+            }
+
+            score += 500;
+            if(score > 999999999) score = 999999999;
+            drawhud = true;
             centipedes[0] = centipede();
             numcentipedes = 1;
             centipedesoundtimer = 0;
@@ -803,27 +817,12 @@ int playgame(){
                 ST7735_SetCursor(0, 0);
                 ST7735_OutString(scoretxt);
                 ST7735_OutUDec(score);
-                ST7735_SetCursor(12, 0);
-                ST7735_OutString(livestxt);
-                ST7735_OutUDec(player.lives);
             }else{
                 ST7735_SetCursor(0, 0);
                 ST7735_OutString(esscoretxt);
                 ST7735_OutUDec(score);
-                ST7735_SetCursor(12, 0);
-                ST7735_OutString(eslivestxt);
-                ST7735_OutUDec(player.lives);
             }
             drawhud = false;
-        }
-
-        //draw mushrooms
-        for(int i = 0; i < 20; i++){
-            for(int j = 0; j < 16; j++){
-                if(mushrooms[i][j].alive){
-                    ST7735_DrawBitmap(mushrooms[i][j].x, mushrooms[i][j].y, mushrooms[i][j].poses[mushrooms[i][j].pose], 8, 8);
-                }
-            }
         }
 
         //draw centipedes
@@ -836,6 +835,15 @@ int playgame(){
 
             for(int i = 0; i < centipedes[j].len; i++){
                 ST7735_DrawBitmap(centipedes[j].body[i].x, centipedes[j].body[i].y, centipedes[j].body[i].poses[centipedes[j].body[i].pose], 8, 8);
+            }
+        }
+
+        //draw mushrooms
+        for(int i = 0; i < 20; i++){
+            for(int j = 0; j < 16; j++){
+                if(mushrooms[i][j].alive){
+                    ST7735_DrawBitmap(mushrooms[i][j].x, mushrooms[i][j].y, mushrooms[i][j].poses[mushrooms[i][j].pose], 8, 8);
+                }
             }
         }
 

@@ -26,10 +26,12 @@
 #define PB16INDEX 32
 #define PB19INDEX 44
 #define PB17INDEX 42
+#define PB18INDEX 43
 
 // Initialize MKII JoyStick and JoyStick button
-void JoyStick_Init(void){
-  ADC_InitDual(ADC1, 6, 4, ADCVREF_VDDA);
+void JoyStickSlidepot_Init(void){
+  ADC_InitTriple(ADC1, 6, 4, 5, ADCVREF_VDDA);
+  //ADC_InitDual(ADC1, 6, 4, ADCVREF_VDDA);
   // assume these are called from LaunchPad_Init
 //  GPIOA->GPRCM.RSTCTL = (uint32_t)0xB1000003;  // Reset GPIOA
 //  GPIOA->GPRCM.PWREN = (uint32_t)0x26000001;   // Enable power to GPIOA
@@ -46,6 +48,7 @@ void JoyStick_Init(void){
   IOMUX->SECCFG.PINCM[PB16INDEX] = (uint32_t) 0x00040081;
   IOMUX->SECCFG.PINCM[PB19INDEX] = (uint32_t) 0x00040081;
   IOMUX->SECCFG.PINCM[PB17INDEX] = (uint32_t) 0x00040081;
+  IOMUX->SECCFG.PINCM[PB18INDEX] = (uint32_t) 0x00040081;
 }
 #define JOYBUTTON (1<<16)
 // Read JoyStick button
@@ -59,16 +62,31 @@ uint32_t JoyStick_InButton(void){
 // Inputs: *x pointer to int
 //         *y pointer to int
 // Output: none
-void JoyStick_In(int* x, int* y){
+void JoyStickSlidepot_In(int* x, int* y, int* z){
   uint32_t rawx;
   uint32_t rawy;
-  ADC_InDual(ADC1, &rawx, &rawy);
+  uint32_t rawz;
+  ADC_InTriple(ADC1, &rawx, &rawy, &rawz);
 
   int velx = 2048 - (int)rawx;
   int vely = 2048 - (int)rawy;
+  int outz;
+
+  if(rawz < 256){
+    outz = 0;
+  }else if(rawz < 512){
+    outz = 1;
+  }else if(rawz < 1024){
+    outz = 2;
+  }else if(rawz < 2048){
+    outz = 3;
+  }else{
+    outz = 4;
+  }
   
   *x = (int)(velx * (4.0 / 2048.0));
   *y = (int)(vely * (4.0 / 2048.0));
+  *z = outz;
 }
 
 #define BUTT1 (1<<12)

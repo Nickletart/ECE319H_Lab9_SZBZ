@@ -47,7 +47,7 @@
  * @brief  Initialize JoyStick
  * @note Button2 not initialized because it conflicts with UART0 Rx from XDS Tx
  */
-void JoyStick_Init(void);
+void JoyStickSlidepot_Init(void);
 
 
 /**
@@ -68,7 +68,7 @@ uint32_t JoyStick_InButton(void);
  * @see JoyStick_Init()
  * @brief  Read JoyStick
  */
-void JoyStick_In(int* x, int* y);
+void JoyStickSlidepot_In(int* x, int* y, int* z);
 
 // Read Button1 button (bottom)
 // Input: none
