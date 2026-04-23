@@ -45,6 +45,23 @@ int fleatimer = 0;
 int fleacooldown = 150;
 int fleasoundtimer = 0;
 
+//spider stuff
+spider myspider(0, 0);
+bool spiderexists = false;
+int spiderprevx = -1;
+int spiderprevy = -1;
+int spidertimer = 0;
+int spidercooldown = 150;
+int spidersoundtimer = 0;
+int spidervelx = 0;
+int spidervely = 0;
+
+bool spiderscoreshow = false;
+int spiderscorex = 0;
+int spiderscorey = 0;
+int spiderscore = 0;
+int spiderscoretimer = 0;
+
 //hud assets
 char scoretxt[] = "Score: ";
 char esscoretxt[] = "Puntos: ";
@@ -171,7 +188,7 @@ void centipede::split(int x, int y){
 
     if(y == centipedes[x].len - 1){
         centipedes[x].len--;
-        score += 200;
+        score += 10;
         if(score > 999999999) score = 999999999;
         drawhud = true;
 
@@ -200,7 +217,7 @@ void centipede::split(int x, int y){
             }
         }
 
-        score += 200;
+        score += 100;
         if(score > 999999999) score = 999999999;
         drawhud = true;
         return;
@@ -209,7 +226,7 @@ void centipede::split(int x, int y){
     if(numcentipedes < 12){
         centipedes[numcentipedes] = centipede(centipedes[x], y);
         numcentipedes++;
-        score += 200;
+        score += 10;
         if(score > 999999999) score = 999999999;
         drawhud = true;
     }
@@ -404,6 +421,21 @@ int pause(){
         }
         prevsw = sw;
     }
+    if(player.lives == 3){
+        LED_On(4);
+        LED_Off(2);
+        LED_Off(1);
+    }else if(player.lives == 2){
+        LED_Off(4);
+        LED_On(2);
+        LED_Off(1);
+    }else if(player.lives == 1){
+        LED_Off(4);
+        LED_Off(2);
+        LED_On(1);
+    }
+
+
     return nextstate;
 }
 
@@ -438,6 +470,7 @@ int playerdeath(){
         LED_Off(4);
         LED_Off(2);
         LED_Off(1);
+        newgame = false;
         return 0;
     }
 
@@ -446,6 +479,19 @@ int playerdeath(){
     fleaprevy = -1;
     fleatimer = 0;
     fleacooldown = 150;
+    
+    //reset spider
+    spiderexists = false;
+    spiderprevx = -1;
+    spiderprevy = -1;
+    spidertimer = 0;
+    spidercooldown = 150;
+    
+    spiderscoreshow = false;
+    spiderscoretimer = 0;
+    spiderscore = 0;
+    spiderscorex = 0;
+    spiderscorey = 0;
     
     player.x = 56;
     player.y = 159;
@@ -519,6 +565,19 @@ void gameinit(){
     fleaprevy = -1;
     fleatimer = 0;
     fleacooldown = 150;
+
+    //reset spider
+    spiderexists = false;
+    spiderprevx = -1;
+    spiderprevy = -1;
+    spidertimer = 0;
+    spidercooldown = 150;
+    
+    spiderscoreshow = false;
+    spiderscoretimer = 0;
+    spiderscore = 0;
+    spiderscorex = 0;
+    spiderscorey = 0;
 
     //led stuff
     LED_On(4);
@@ -609,7 +668,7 @@ int playgame(){
                     mushrooms[topedge][hitedge].alive = 0;
                     mushrooms[topedge][hitedge].pose = 0;
                     ST7735_FillRect(mushrooms[topedge][hitedge].x, mushrooms[topedge][hitedge].y - 7, 8, 8, ST7735_BLACK);
-                    score += 100;
+                    score += 1;
                     if(score > 999999999) score = 999999999;
                     drawhud = true;
                 }
@@ -636,6 +695,52 @@ int playgame(){
 
                     Play_Audio(2);//enemydeath
                     score += 200;
+                    if(score > 999999999) score = 999999999;
+                    drawhud = true;
+                }
+            }
+
+            if(spiderexists && bullets[i].alive){
+                int botedge = myspider.y;
+                int topedge = myspider.y - 7;
+                int leftedge = myspider.x;
+                int rightedge = myspider.x + 14;
+
+                int bbotedge = bullets[i].y;
+                int btopedge = bullets[i].y - 3;
+                int bleftedge = bullets[i].x;
+                int brightedge = bullets[i].x + 1;
+
+                if(!(btopedge > botedge || bleftedge > rightedge || brightedge < leftedge || bbotedge < topedge)){
+                    ST7735_FillRect(bullets[i].prevx, bullets[i].prevy - 3, 2, 4, ST7735_BLACK);
+                    bullets[i].alive = 0;
+
+                    ST7735_FillRect(myspider.x, myspider.y - 7, 15, 8, ST7735_BLACK);
+                    spiderexists = false;
+                    spidercooldown = 150;
+
+                    Play_Audio(2);//enemydeath
+                    if(myspider.y < 128){
+                        score += 300;
+                        spiderscore = 300;
+                    }else if(myspider.y < 144){
+                        score += 600;
+                        spiderscore = 600;
+                    }else if(myspider.y < 152){
+                        score += 900;
+                        spiderscore = 900;
+                    }
+
+                    spiderscoreshow = true;
+                    spiderscorex = myspider.x + 2;
+                    if(spiderscorex < 0) spiderscorex = 0;
+                    if(spiderscorex > 117) spiderscorex = 117;
+
+                    spiderscorey = myspider.y;
+                    if(spiderscorey < 4) spiderscorey = 4;
+                    if(spiderscorey > 159) spiderscorey = 159;
+                    
+                    spiderscoretimer = 0;
                     if(score > 999999999) score = 999999999;
                     drawhud = true;
                 }
@@ -886,8 +991,6 @@ int playgame(){
                 }
             }
 
-            score += 500;
-            if(score > 999999999) score = 999999999;
             drawhud = true;
             centipedes[0] = centipede();
             numcentipedes = 1;
@@ -1016,6 +1119,108 @@ int playgame(){
         }
     }
 
+//----------spider stuff--------------------------------------------------------------
+
+    if(spidercooldown > 0) spidercooldown--;
+    if(!spiderexists && spidercooldown == 0){
+        if(!random(4)){
+            spiderexists = true;
+            spidertimer = 0;
+
+            int side = random(2);
+            if(side == 0){
+                myspider.x = 0;
+                spidervelx = 1;
+            }else{
+                myspider.x = 113;
+                spidervelx = -1;
+            }
+
+            myspider.y = random(50) + 86;
+            int updown = random(2);
+            if(updown == 0){
+                spidervely = 1;
+            }else{
+                spidervely = -1;
+            }
+        }
+    }
+
+    if(spiderexists){
+        spiderprevx = myspider.x;
+        spiderprevy = myspider.y;
+
+        int tempx = myspider.x + spidervelx;
+        int tempy = myspider.y + spidervely;
+
+        spidertimer++;
+        if(spidertimer >= 3){
+            spidertimer = 0;
+            myspider.pose++;
+            if(myspider.pose >= 8) myspider.pose = 0;
+        }
+
+        int botedge = tempy;
+        int topedge = tempy - 7;
+        int rightedge = tempx + 14;
+        int leftedge = tempx;
+
+        int pbotedge = player.y;
+        int ptopedge = player.y - 7;
+        int pleftedge = player.x;
+        int prightedge = player.x + 6;
+
+        if(botedge >= 159){
+            tempy = 159;
+            spidervely = -1;
+        }else if(topedge <= 86){
+            tempy = 93;
+            spidervely = 1;
+        }
+        
+        if(leftedge <= 0){
+            tempx = 0;
+            spidervelx = 1;
+        }else if(rightedge >= 127){
+            tempx = 113;
+            spidervelx = -1;
+        }
+
+        botedge = tempy;
+        topedge = tempy - 7;
+        rightedge = tempx + 14;
+        leftedge = tempx;
+
+        int botrow = tempy / 8;
+        int toprow = (tempy - 7) / 8;
+        int rightcol = (tempx + 14) / 8;
+        int leftcol = tempx / 8;
+
+        if(botrow < 20 && toprow >= 0 && rightcol < 16 && leftcol >= 0 && botrow >= 0 && toprow < 20 && leftcol < 16 && rightcol >= 0){
+            if(mushrooms[botrow][rightcol].alive){
+                mushrooms[botrow][rightcol].alive = 0;
+                ST7735_FillRect(mushrooms[botrow][rightcol].x, mushrooms[botrow][rightcol].y - 7, 8, 8, ST7735_BLACK);
+            }if(mushrooms[botrow][leftcol].alive){
+                mushrooms[botrow][leftcol].alive = 0;
+                ST7735_FillRect(mushrooms[botrow][leftcol].x, mushrooms[botrow][leftcol].y - 7, 8, 8, ST7735_BLACK);
+            }if(mushrooms[toprow][rightcol].alive){
+                mushrooms[toprow][rightcol].alive = 0;
+                ST7735_FillRect(mushrooms[toprow][rightcol].x, mushrooms[toprow][rightcol].y - 7, 8, 8, ST7735_BLACK);
+            }if(mushrooms[toprow][leftcol].alive){
+                mushrooms[toprow][leftcol].alive = 0;
+                ST7735_FillRect(mushrooms[toprow][leftcol].x, mushrooms[toprow][leftcol].y - 7, 8, 8, ST7735_BLACK);
+            }
+        }
+
+        if(!(botedge < ptopedge || topedge > pbotedge || leftedge > prightedge || rightedge < pleftedge)){
+            ST7735_FillRect(myspider.x, myspider.y - 7, 15, 8, ST7735_BLACK);
+            return playerdeath();
+        }
+
+        myspider.x = tempx;
+        myspider.y = tempy;
+    }
+
 //----------rendering--------------------------------------------------------------
 
         //score and lives
@@ -1080,6 +1285,39 @@ int playgame(){
             if(bullets[i].alive){
                 ST7735_FillRect(bullets[i].prevx, bullets[i].prevy - 3, 2, 4, ST7735_BLACK);
                 ST7735_DrawBitmap(bullets[i].x, bullets[i].y, greenbullet, 2, 4);
+            }
+        }
+
+        //draw spider
+        if(spiderexists){
+            ST7735_FillRect(spiderprevx, spiderprevy - 7, 15, 8, ST7735_BLACK);
+            ST7735_DrawBitmap(myspider.x, myspider.y, myspider.poses[myspider.pose], 15, 8);
+        }
+
+        if(!spiderexists && spiderprevx != -1){
+            ST7735_FillRect(spiderprevx, spiderprevy - 7, 15, 8, ST7735_BLACK);
+            spiderprevx = -1;
+            spiderprevy = -1;
+        }
+
+        //draw score
+        if(spiderscoreshow && spiderscoretimer < 60){
+            spiderscoretimer++;
+        }
+
+        if(spiderscoreshow){
+            if(spiderscoretimer < 60){
+                if(spiderscore == 300){
+                    ST7735_DrawBitmap(spiderscorex, spiderscorey, green300, 11, 5);
+                }else if(spiderscore == 600){
+                    ST7735_DrawBitmap(spiderscorex, spiderscorey, green600, 11, 5);
+                }else if(spiderscore == 900){
+                    ST7735_DrawBitmap(spiderscorex, spiderscorey, green900, 11, 5);
+                }
+            }else{
+                ST7735_FillRect(spiderscorex, spiderscorey - 4, 11, 5, ST7735_BLACK);
+                spiderscoretimer = 0;
+                spiderscoreshow = false;
             }
         }
     }
