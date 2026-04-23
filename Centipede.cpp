@@ -421,21 +421,10 @@ int pause(){
         }
         prevsw = sw;
     }
-    if(player.lives == 3){
-        LED_On(4);
-        LED_Off(2);
-        LED_Off(1);
-    }else if(player.lives == 2){
-        LED_Off(4);
-        LED_On(2);
-        LED_Off(1);
-    }else if(player.lives == 1){
-        LED_Off(4);
-        LED_Off(2);
-        LED_On(1);
-    }
 
-
+    LED_Off(4);
+    LED_Off(2);
+    LED_Off(1);
     return nextstate;
 }
 
@@ -458,15 +447,7 @@ int playerdeath(){
 
     player.lives--;
 
-    if(player.lives == 2){
-        LED_Off(4);
-        LED_On(2);
-        LED_Off(1);
-    }else if(player.lives == 1){
-        LED_Off(4);
-        LED_Off(2);
-        LED_On(1);
-    }else if(!player.lives){
+    if(!player.lives){
         LED_Off(4);
         LED_Off(2);
         LED_Off(1);
@@ -509,6 +490,9 @@ int playerdeath(){
     cooldown = 0;
     centipedesoundtimer = 0;
 
+    LED_Off(4);
+    LED_Off(2);
+    LED_Off(1);
     drawhud = true;
     return 1;
 }
@@ -578,11 +562,6 @@ void gameinit(){
     spiderscore = 0;
     spiderscorex = 0;
     spiderscorey = 0;
-
-    //led stuff
-    LED_On(4);
-    LED_Off(2);
-    LED_Off(1);
 
     drawhud = true;
 }
@@ -1332,6 +1311,20 @@ int playgame(){
                 spiderscoretimer = 0;
                 spiderscoreshow = false;
             }
+        }
+
+        if(player.lives == 3){
+            LED_On(4);
+            LED_Off(2);
+            LED_Off(1);
+        }else if(player.lives == 2){
+            LED_Off(4);
+            LED_On(2);
+            LED_Off(1);
+        }else if(player.lives == 1){
+            LED_Off(4);
+            LED_Off(2);
+            LED_On(1);
         }
     }
 
