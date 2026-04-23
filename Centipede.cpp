@@ -36,6 +36,15 @@ int centipedesoundtimer = 0;
 segment prevcentipedes[12][12];
 int prevcentipedelen[12];
 
+//flea stuff
+flea myflea(0, 0);
+bool fleaexists = false;
+int fleaprevx = -1;
+int fleaprevy = -1;
+int fleatimer = 0;
+int fleacooldown = 150;
+int fleasoundtimer = 0;
+
 //hud assets
 char scoretxt[] = "Score: ";
 char esscoretxt[] = "Puntos: ";
@@ -291,6 +300,7 @@ void mushroom_gen(){
                 neighbortolerance = random(3);
                 if(j > 0 && mushrooms[i][j - 1].alive && neighbortolerance) continue;
                 mushrooms[i][j].alive = 1;
+                mushrooms[i][j].pose = 0;
             }
         }
     }
@@ -430,6 +440,12 @@ int playerdeath(){
         LED_Off(1);
         return 0;
     }
+
+    fleaexists = false;
+    fleaprevx = -1;
+    fleaprevy = -1;
+    fleatimer = 0;
+    fleacooldown = 150;
     
     player.x = 56;
     player.y = 159;
@@ -487,6 +503,7 @@ void gameinit(){
     //spawn centipede
     centipedes[0] = centipede();
     numcentipedes = 1;
+    centipedesoundtimer = 0;
 
     //reset bullets
     for(int i = 0; i < 10; i++){
@@ -494,9 +511,14 @@ void gameinit(){
         bullets[i].prevy = -1;
         bullets[i].alive = 0;
     }
-    
     cooldown = 0;
-    centipedesoundtimer = 0;
+
+    //reset flea
+    fleaexists = false;
+    fleaprevx = -1;
+    fleaprevy = -1;
+    fleatimer = 0;
+    fleacooldown = 150;
 
     //led stuff
     LED_On(4);
@@ -588,6 +610,32 @@ int playgame(){
                     mushrooms[topedge][hitedge].pose = 0;
                     ST7735_FillRect(mushrooms[topedge][hitedge].x, mushrooms[topedge][hitedge].y - 7, 8, 8, ST7735_BLACK);
                     score += 100;
+                    if(score > 999999999) score = 999999999;
+                    drawhud = true;
+                }
+            }
+
+            if(fleaexists && bullets[i].alive){
+                int botedge = myflea.y;
+                int topedge = myflea.y - 7;
+                int leftedge = myflea.x;
+                int rightedge = myflea.x + 7;
+
+                int bbotedge = bullets[i].y;
+                int btopedge = bullets[i].y - 3;
+                int bleftedge = bullets[i].x;
+                int brightedge = bullets[i].x + 1;
+
+                if(!(btopedge > botedge || bleftedge > rightedge || brightedge < leftedge || bbotedge < topedge)){
+                    ST7735_FillRect(bullets[i].prevx, bullets[i].prevy - 3, 2, 4, ST7735_BLACK);
+                    bullets[i].alive = 0;
+
+                    ST7735_FillRect(myflea.x, myflea.y - 7, 8, 8, ST7735_BLACK);
+                    fleaexists = false;
+                    fleacooldown = 60;
+
+                    Play_Audio(2);//enemydeath
+                    score += 200;
                     if(score > 999999999) score = 999999999;
                     drawhud = true;
                 }
@@ -890,6 +938,84 @@ int playgame(){
             if(!mushrooms[botedge][leftedge].alive && !mushrooms[botedge][rightedge].alive) player.y = tempy;
         }
 
+//----------flea stuff----------------------------------------------------------
+
+    int mushroomcount = 0;
+    for(int i = 0; i < 20; i++){
+        for(int j = 0; j < 16; j++){
+            if(mushrooms[i][j].alive) mushroomcount++;
+        }
+    }
+
+    if(fleaexists){
+        fleasoundtimer++;
+        if(fleasoundtimer >= 6){
+            Play_Audio(5);//flea
+            fleasoundtimer = 0;
+        }
+    }else{
+        fleasoundtimer = 0;
+    }
+
+    if(fleacooldown > 0) fleacooldown--;
+    if(!fleaexists && mushroomcount < 15 && fleacooldown == 0){
+        myflea.x = random(14) * 8 + 8;
+        myflea.y = 7;
+        myflea.pose = 0;
+        fleaexists = true;
+        fleaprevx = myflea.x;
+        fleaprevy = myflea.y;
+        fleatimer = 0;
+    }
+
+    if(fleaexists){
+        fleaprevx = myflea.x;
+        fleaprevy = myflea.y;
+        myflea.y += 2;
+
+        int tempx = myflea.x / 8;
+        int tempy = (myflea.y - 7) / 8;
+
+        if(tempx >= 0 && tempx < 16 && tempy >= 0 && tempy < 19){
+            if(!mushrooms[tempy][tempx].alive){
+                if(!random(5)){
+                    mushrooms[tempy][tempx].alive = 1;
+                    mushrooms[tempy][tempx].x = tempx * 8;
+                    mushrooms[tempy][tempx].y = (tempy + 1) * 8 - 1;
+                    mushrooms[tempy][tempx].pose = 0;
+                }
+            }
+        }
+
+        fleatimer++;
+        if(fleatimer >= 3){
+            fleatimer = 0;
+            myflea.pose++;
+            if(myflea.pose >= 4) myflea.pose = 0;
+        }
+
+        if(myflea.y > 167){
+            ST7735_FillRect(myflea.x, myflea.y - 7, 8, 8, ST7735_BLACK);
+            fleaexists = false;
+            fleacooldown = 60;
+        }
+
+        int botedge = myflea.y;
+        int topedge = myflea.y - 7;
+        int leftedge = myflea.x;
+        int rightedge= myflea.x + 7;
+
+        int pbotedge = player.y;
+        int ptopedge = player.y - 7;
+        int pleftedge = player.x;
+        int prightedge = player.x + 6;
+
+        if(!(botedge < ptopedge || topedge > pbotedge || leftedge > prightedge || rightedge < pleftedge)){
+            ST7735_FillRect(myflea.x, myflea.y - 7, 8, 8, ST7735_BLACK);
+            return playerdeath();
+        }
+    }
+
 //----------rendering--------------------------------------------------------------
 
         //score and lives
@@ -935,6 +1061,18 @@ int playgame(){
             ST7735_DrawBitmap(player.x, player.y, greengun, 7, 8);
             prevx = player.x;
             prevy = player.y;
+        }
+
+        //draw flea
+        if(fleaexists){
+            ST7735_FillRect(fleaprevx, fleaprevy - 7, 8, 8, ST7735_BLACK);
+            ST7735_DrawBitmap(myflea.x, myflea.y, myflea.poses[myflea.pose], 8, 8);
+        }
+
+        if(!fleaexists && fleaprevx != -1){
+            ST7735_FillRect(fleaprevx, fleaprevy - 7, 8, 8, ST7735_BLACK);
+            fleaprevx = -1;
+            fleaprevy = -1;
         }
 
         //draw bullets
