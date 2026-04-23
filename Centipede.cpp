@@ -589,6 +589,8 @@ void gameinit(){
 
 int playgame(){
 
+    drawhud = true;
+
     segment tempheads[12];
 
     while(1){
@@ -1120,6 +1122,17 @@ int playgame(){
     }
 
 //----------spider stuff--------------------------------------------------------------
+
+
+    if(spiderexists){
+        spidersoundtimer++;
+        if(spidersoundtimer >= 6){
+            Play_Audio(4);//spider
+            spidersoundtimer = 0;
+        }
+    }else{
+        spidersoundtimer = 0;
+    }
 
     if(spidercooldown > 0) spidercooldown--;
     if(!spiderexists && spidercooldown == 0){
